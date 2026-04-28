@@ -24,7 +24,7 @@ export default function Overview() {
       .then((r) => setOverview(r.data))
       .catch(() => router.replace('/login'));
 
-    const socket = io('http://localhost:3001');
+    const socket = io(process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001');
     socket.on('transaction:new', (tx) => {
       setFeed((prev) => [tx, ...prev].slice(0, 20));
     });
