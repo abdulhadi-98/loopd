@@ -7,6 +7,19 @@ const Restaurant = require('../models/Restaurant');
 
 const router = express.Router();
 
+// Public endpoint — look up restaurant by slug (for branded landing pages)
+router.get('/restaurant-by-slug/:slug', async (req, res, next) => {
+  try {
+    const restaurant = await Restaurant.findOne({ slug: req.params.slug }).select(
+      'name slug logo_url brand_color accent_color points_per_100 reward_threshold reward_description'
+    );
+    if (!restaurant) return res.status(404).json({ error: 'Restaurant not found' });
+    res.json(restaurant);
+  } catch (err) {
+    next(err);
+  }
+});
+
 // Public endpoint — no auth (used by landing page to show restaurant info)
 router.get('/restaurant-public/:id', async (req, res, next) => {
   try {

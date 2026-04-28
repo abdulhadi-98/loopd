@@ -15,6 +15,7 @@ const scanRoutes = require('./routes/scan');
 const pushRoutes = require('./routes/push');
 const campaignRoutes = require('./routes/campaign');
 const dashboardRoutes = require('./routes/dashboard');
+const superadminRoutes = require('./routes/superadmin');
 
 const app = express();
 const server = http.createServer(app);
@@ -27,7 +28,7 @@ app.use(cors());
 app.use(morgan('dev'));
 app.use(express.json());
 
-const limiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 100 });
+const limiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 200 });
 app.use('/api/', limiter);
 
 app.use('/api/auth', authRoutes);
@@ -37,6 +38,7 @@ app.use('/api/scan', scanRoutes);
 app.use('/api/push', pushRoutes);
 app.use('/api/campaign', campaignRoutes);
 app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/superadmin', superadminRoutes);
 
 app.get('/health', (req, res) => res.json({ status: 'ok' }));
 
@@ -47,8 +49,9 @@ app.use((err, req, res, next) => {
 
 mongoose
   .connect(process.env.MONGODB_URI)
-  .then(() => {
+  .then(async () => {
     console.log('MongoDB connected');
+    await seedDefaultPlans();
     startChangeStreams(io);
     server.listen(process.env.PORT || 3001, () =>
       console.log(`Server running on port ${process.env.PORT || 3001}`)
@@ -58,6 +61,37 @@ mongoose
     console.error('MongoDB connection error:', err);
     process.exit(1);
   });
+
+async function seedDefaultPlans() {
+  const Plan = require('./models/Plan');
+  const count = await Plan.countDocuments();
+  if (count > 0) return;
+
+  await Plan.insertMany([
+    {
+      name: 'Starter',
+      price_monthly: 4999,
+      max_customers: 500,
+      max_staff: 3,
+      features: { apple_wallet: false, google_wallet: false, campaigns: false, analytics: true, custom_branding: false },
+    },
+    {
+      name: 'Growth',
+      price_monthly: 12999,
+      max_customers: 3000,
+      max_staff: 10,
+      features: { apple_wallet: true, google_wallet: true, campaigns: true, analytics: true, custom_branding: false },
+    },
+    {
+      name: 'Pro',
+      price_monthly: 29999,
+      max_customers: 999999,
+      max_staff: 999,
+      features: { apple_wallet: true, google_wallet: true, campaigns: true, analytics: true, custom_branding: true },
+    },
+  ]);
+  console.log('Default plans seeded');
+}
 
 function startChangeStreams(io) {
   const Transaction = require('./models/Transaction');
