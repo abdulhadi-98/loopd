@@ -1,0 +1,9 @@
+node_modules/
+.env
+*.pem
+*.p12
+*.key
+dist/
+build/
+.DS_Store
+*.log

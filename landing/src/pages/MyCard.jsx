@@ -1,0 +1,78 @@
+import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import axios from 'axios';
+import QRDisplay from '../components/QRDisplay';
+import PointsBar from '../components/PointsBar';
+import TierBadge from '../components/TierBadge';
+import TransactionList from '../components/TransactionList';
+
+export default function MyCard() {
+  const [searchParams] = useSearchParams();
+  const cardId = searchParams.get('cardId') || localStorage.getItem('cardId');
+  const restaurantId = searchParams.get('r') || sessionStorage.getItem('enroll_restaurantId');
+
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!restaurantId) return;
+    const token = localStorage.getItem('token');
+    axios
+      .get(`/api/enroll/my-card?restaurantId=${restaurantId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      .then((r) => setData(r.data))
+      .catch(console.error)
+      .finally(() => setLoading(false));
+  }, [restaurantId]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="text-gray-500">Loading your card...</p>
+      </div>
+    );
+  }
+
+  if (!data) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="text-gray-500">Card not found.</p>
+      </div>
+    );
+  }
+
+  const { card, transactions } = data;
+  const restaurant = card.restaurant_id;
+  const customer = card.customer_id;
+
+  return (
+    <div
+      className="min-h-screen flex flex-col items-center py-8 px-4"
+      style={{ backgroundColor: restaurant?.brand_color || '#000', color: restaurant?.accent_color || '#fff' }}
+    >
+      {restaurant?.logo_url && (
+        <img src={restaurant.logo_url} alt="logo" className="w-16 h-16 rounded-xl mb-3 object-cover" />
+      )}
+      <h1 className="text-xl font-bold">{restaurant?.name}</h1>
+      <p className="text-sm opacity-70 mb-4">{customer?.name}</p>
+
+      <TierBadge tier={card.tier} />
+
+      <div className="text-5xl font-extrabold my-4">{card.points_balance}</div>
+      <p className="text-sm opacity-70 mb-4">points</p>
+
+      <PointsBar current={card.points_balance} max={restaurant?.reward_threshold || 300} />
+
+      <div className="my-6">
+        <QRDisplay value={card.qr_value} />
+        <p className="text-xs text-center opacity-60 mt-2">Show this QR to staff to earn points</p>
+      </div>
+
+      <div className="w-full max-w-sm">
+        <h3 className="font-semibold mb-2 opacity-80">Recent Activity</h3>
+        <TransactionList transactions={transactions} />
+      </div>
+    </div>
+  );
+}
